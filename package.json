@@ -1,0 +1,27 @@
+{
+  "name": "ai_based_website_builder",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon app.js",
+    "start": "node app.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^1.38.0",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.1.5",
+    "nodemailer": "^7.0.13",
+    "nodemon": "^3.1.11",
+    "ollama": "^0.6.3",
+    "stripe": "^20.3.0"
+  }
+}
