@@ -28,4 +28,8 @@ export const config = {
     password: process.env.SMTP_PASSWORD,
     from: process.env.SMTP_FROM_EMAIL,
   },
+  rateLimiter: {
+    timeForRateLimiter: process.env.RATE_LIMITER_TIME,
+    maxPackages: process.env.MAX_LIMIT_PACKAGE,
+  },
 };

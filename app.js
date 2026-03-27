@@ -14,6 +14,7 @@ import conversationRoutes from "./routes/conversationRoutes.js";
 import versionRoutes from "./routes/versionRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import cors from "cors";
+import limiter from "./utils/rateLimiter.js";
 
 const app = express();
 
@@ -31,6 +32,7 @@ const allowedOrigins = new Set(
     "192.168.1.15:5173",
   ].filter(Boolean),
 );
+app.use(limiter);
 
 app.use(
   cors({

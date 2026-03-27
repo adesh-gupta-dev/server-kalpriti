@@ -39,6 +39,7 @@ CRITICAL REQUIREMENTS:
 - Use placeholder images from https://placehold.co/600x400
 - Use Tailwind gradient classes for beautiful backgrounds
 - Make sure all buttons, cards, and components use Tailwind styling
+-make sure not to repeat code 
 
 CRITICAL HARD RULES:
 1. You MUST output ONLY HTML.
