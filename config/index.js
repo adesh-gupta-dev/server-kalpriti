@@ -3,7 +3,7 @@ import "dotenv/config";
 export const config = {
   env: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT) || 3000,
-  clientUrl: process.env.CLIENT_URL || "",
+  clientUrl: process.env.CLIENT_URL,
   cookie: {
     expiresIn: Number(process.env.COOKIE_EXPIRES_IN) || 7,
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",

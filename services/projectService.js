@@ -7,40 +7,44 @@ export async function createProject(
   next,
 ) {
   const currentCode = await build(initialPrompt, { _id: userId }, next);
+  // console.table(userId, { websiteName, initialPrompt, currentCode });
   if (!currentCode) return null;
+  let project;
+  try {
+    project = await WebsiteProject.create({
+      name: websiteName,
+      initial_prompt: initialPrompt,
+      current_code: currentCode,
+      user_Id: userId,
+    });
+    const [userConversation, aiConversation] = await Promise.all([
+      Conversation.create({
+        role: "user",
+        content: initialPrompt.trim(),
+        projectId: project._id,
+      }),
+      Conversation.create({
+        role: "assistant",
+        content: currentCode,
+        projectId: project._id,
+      }),
+    ]);
 
-  const project = await WebsiteProject.create({
-    name: websiteName,
-    initial_prompt: initialPrompt,
-    current_code: currentCode,
-    user_Id: userId,
-  });
+    project.conversation.push(userConversation._id, aiConversation._id);
 
-  const [userConversation, aiConversation] = await Promise.all([
-    Conversation.create({
-      role: "user",
-      content: initialPrompt.trim(),
+    const savedVersion = await Version.create({
+      code: currentCode,
+      description: "Initial version",
       projectId: project._id,
-    }),
-    Conversation.create({
-      role: "assistant",
-      content: currentCode,
-      projectId: project._id,
-    }),
-  ]);
+    });
 
-  project.conversation.push(userConversation._id, aiConversation._id);
-
-  const savedVersion = await Version.create({
-    code: currentCode,
-    description: "Initial version",
-    projectId: project._id,
-  });
-
-  project.versions.push(savedVersion._id);
-  project.current_version_index = "0";
-  await project.save();
-
+    project.versions.push(savedVersion._id);
+    project.current_version_index = "0";
+    await project.save();
+  } catch (error) {
+    console.error("Error creating project:", error);
+    return null;
+  }
   return project;
 }
 
@@ -76,7 +80,9 @@ export async function getCommunityProjectById(projectId, userId) {
     isPublished: true,
     user_Id: { $ne: userId },
   })
-    .select("name initial_prompt current_code isPublished user_Id createdAt updatedAt")
+    .select(
+      "name initial_prompt current_code isPublished user_Id createdAt updatedAt",
+    )
     .populate("user_Id", "name")
     .lean();
 
