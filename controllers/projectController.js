@@ -8,10 +8,10 @@ export const createProject = asyncErrorHandler(async (req, res, next) => {
   const userId = req.user._id;
   const isVerified = await checkIsVerified(userId);
 
-  console.log("====================================");
-  console.log("controller");
-  console.table({ websiteName, initialPrompt, isVerified, userId });
-  console.log("====================================");
+  // console.log("====================================");
+  // console.log("controller");
+  // console.table({ websiteName, initialPrompt, isVerified, userId });
+  // console.log("====================================");
   if (!isVerified.verified) {
     return next(
       new ErrorHandler("Please verify your email to access this feature", 403),

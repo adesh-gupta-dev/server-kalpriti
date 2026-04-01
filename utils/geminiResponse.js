@@ -1,7 +1,18 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY });
-const MODEL = "gemini-3-flash-preview";
+/**
+ * CONFIGURATION
+ */
+const ai = new GoogleGenAI({
+  apiKey: process.env.GOOGLE_GEMINI_API_KEY,
+});
+
+// ✅ Use stable model (IMPORTANT)
+const MODEL = process.env.GOOGLE_GEMINI_MODEL || "gemini-2.5-flash-lite";
+
+/**
+ * SYSTEM PROMPTS
+ */
 const ENHANCE_PROMPT_SYSTEM = `You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
 
 Enhance this prompt by:
@@ -43,68 +54,111 @@ CRITICAL HARD RULES:
 
 The HTML should be complete and ready to render as-is with Tailwind CSS.`;
 
+/**
+ * CORE: Enhance Prompt
+ */
 export async function geminiEnhanceResponse(prompt) {
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: `${ENHANCE_PROMPT_SYSTEM}\n\nUser Request:\n${prompt}`,
-          },
-        ],
-      },
-    ],
-  });
+  try {
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `${ENHANCE_PROMPT_SYSTEM}\n\nUser Request:\n${prompt}`,
+            },
+          ],
+        },
+      ],
+    });
 
-  return (await extractResponseText(response)).trim();
+    const text = result.text;
+
+    if (!text || text.trim() === "") {
+      throw new Error("Empty enhance response");
+    }
+
+    return text.trim();
+  } catch (error) {
+    console.error("Enhance Error:", error.message);
+    throw error;
+  }
 }
+
+/**
+ * CORE: Build Website
+ */
 export async function geminiBuildResponse(prompt) {
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: `${BUILD_PROMPT_SYSTEM}\n\n${prompt}`,
-          },
-        ],
-      },
-    ],
-  });
+  try {
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `${BUILD_PROMPT_SYSTEM}\n\n${prompt}`,
+            },
+          ],
+        },
+      ],
+    });
 
-  return (await extractResponseText(response)).trim();
+    console.log("RAW GEMINI RESPONSE:", result);
+
+    let code = result.text;
+
+    // console.log("Generated Code:", code);
+
+    if (!code || code.trim() === "") {
+      throw new Error("Gemini returned empty response");
+    }
+
+    // Remove markdown if model misbehaves
+    code = code.replace(/```html|```/g, "").trim();
+
+    return code;
+  } catch (error) {
+    console.error("Build Error:", error.message);
+    throw error; // ❗ DO NOT return null
+  }
 }
-export async function geminiUpdateResponse(prompt, currentCode) {
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: `${BUILD_PROMPT_SYSTEM}
 
-Update the website with the following request:
+/**
+ * CORE: Update Existing Website
+ */
+export async function geminiUpdateResponse(prompt, currentCode) {
+  try {
+    const result = await ai.models.generateContent({
+      model: MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `${BUILD_PROMPT_SYSTEM}
+
+Update the website with:
 ${prompt}
 
 Current HTML:
 ${currentCode}`,
-          },
-        ],
-      },
-    ],
-  });
+            },
+          ],
+        },
+      ],
+    });
 
-  return (await extractResponseText(response)).trim();
-}
+    let code = result.text;
 
-async function extractResponseText(response) {
-  if (!response) return "";
-  if (typeof response.text === "function") {
-    return (await response.text()) ?? "";
+    if (!code || code.trim() === "") {
+      throw new Error("Empty update response");
+    }
+
+    return code.replace(/```html|```/g, "").trim();
+  } catch (error) {
+    console.error("Update Error:", error.message);
+    throw error;
   }
-  return response.text ?? "";
 }

@@ -6,18 +6,28 @@ export async function createProject(
   { websiteName, initialPrompt },
   next,
 ) {
+  // 1. Build the code using the Gemini logic
   const currentCode = await build(initialPrompt, { _id: userId }, next);
-  // console.table(userId, { websiteName, initialPrompt, currentCode });
-  if (!currentCode) return null;
-  let project;
+
+  if (!currentCode) {
+    console.error("Build failed: No code generated");
+    return null;
+  }
+
   try {
-    project = await WebsiteProject.create({
+    // 2. Create the Project document
+    // Note: Ensure your Schema uses 'user_Id' or 'userId' consistently
+    const project = await WebsiteProject.create({
       name: websiteName,
       initial_prompt: initialPrompt,
       current_code: currentCode,
       user_Id: userId,
+      conversation: [], // Initialize arrays to be safe
+      versions: [],
     });
-    const [userConversation, aiConversation] = await Promise.all([
+
+    // 3. Create initial conversation and version history entries
+    const [userConversation, aiConversation, savedVersion] = await Promise.all([
       Conversation.create({
         role: "user",
         content: initialPrompt.trim(),
@@ -28,26 +38,27 @@ export async function createProject(
         content: currentCode,
         projectId: project._id,
       }),
+      Version.create({
+        code: currentCode,
+        description: "Initial version",
+        projectId: project._id,
+      }),
     ]);
 
+    // 4. Update the project document with the new IDs
     project.conversation.push(userConversation._id, aiConversation._id);
-
-    const savedVersion = await Version.create({
-      code: currentCode,
-      description: "Initial version",
-      projectId: project._id,
-    });
-
     project.versions.push(savedVersion._id);
-    project.current_version_index = "0";
+    project.current_version_index = 0; // Use number 0, not string "0"
+
     await project.save();
+    return project;
   } catch (error) {
-    console.error("Error creating project:", error);
+    // This logs the specific reason (Validation error, Connection error, etc.)
+    console.error("Error in createProject database operations:", error.message);
+    if (next) next(error); // Pass to error handling middleware if it exists
     return null;
   }
-  return project;
 }
-
 export async function getUserProjects(userId) {
   return WebsiteProject.find({ user_Id: userId }).sort({ createdAt: -1 });
 }
