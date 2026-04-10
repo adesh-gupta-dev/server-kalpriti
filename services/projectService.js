@@ -89,7 +89,6 @@ export async function getCommunityProjectById(projectId, userId) {
   const project = await WebsiteProject.findOne({
     _id: projectId,
     isPublished: true,
-    user_Id: { $ne: userId },
   })
     .select(
       "name initial_prompt current_code isPublished user_Id createdAt updatedAt",
@@ -122,10 +121,12 @@ export async function updateProjectVisibility(projectId, userId, isPublished) {
     _id: projectId,
     user_Id: userId,
   });
+  console.log(project.isPublished);
   if (!project) return null;
 
   project.isPublished = isPublished;
   await project.save();
+  console.log(project.isPublished);
   return project;
 }
 
