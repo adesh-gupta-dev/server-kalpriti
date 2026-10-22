@@ -1,6 +1,6 @@
 node_modules
 .env
-pnpm-lock.yaml
 frontend-*.json
-*dockerfile*
-.docker*
+.env.*
+!.env.example
+coverage/

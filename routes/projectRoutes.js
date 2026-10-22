@@ -10,16 +10,27 @@ import {
   deleteProject,
 } from "../controllers/projectController.js";
 import { isAuthenticated } from "../middleware/authMiddleware.js";
+import { validateBody } from "../middleware/validateBody.js";
 
 const router = express.Router();
 
-router.post("/create", isAuthenticated, createProject);
+router.post("/create", isAuthenticated, validateBody("project"), createProject);
 router.get("/my-projects", isAuthenticated, getUserProjects);
 router.get("/community", isAuthenticated, getCommunityProjects);
 router.get("/community/:id", isAuthenticated, getCommunityProjectById);
 router.get("/:id", isAuthenticated, getProjectById);
-router.put("/visibility/:projectId", isAuthenticated, projectVisibility);
-router.put("/edit/:projectId", isAuthenticated, editProject);
+router.put(
+  "/visibility/:projectId",
+  isAuthenticated,
+  validateBody("visibility"),
+  projectVisibility,
+);
+router.put(
+  "/edit/:projectId",
+  isAuthenticated,
+  validateBody("editProject"),
+  editProject,
+);
 router.delete("/:projectId", isAuthenticated, deleteProject);
 
 export default router;

@@ -4,10 +4,16 @@ import {
   addMessage,
 } from "../controllers/conversationController.js";
 import { isAuthenticated } from "../middleware/authMiddleware.js";
+import { validateBody } from "../middleware/validateBody.js";
 
 const router = express.Router();
 
 router.get("/:projectId", isAuthenticated, getConversations);
-router.post("/:projectId", isAuthenticated, addMessage);
+router.post(
+  "/:projectId",
+  isAuthenticated,
+  validateBody("message"),
+  addMessage,
+);
 
 export default router;

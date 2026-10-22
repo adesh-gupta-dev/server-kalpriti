@@ -7,7 +7,6 @@ import paymentRoutes from "./paymentRoutes.js";
 
 const router = express.Router();
 
-// API routes - consistent /api prefix
 router.use("/auth", authRoutes);
 router.use("/projects", projectRoutes);
 router.use("/conversations", conversationRoutes);

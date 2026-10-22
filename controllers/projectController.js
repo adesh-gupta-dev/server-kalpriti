@@ -8,10 +8,10 @@ export const createProject = asyncErrorHandler(async (req, res, next) => {
   const userId = req.user._id;
   const isVerified = await checkIsVerified(userId);
 
-  // console.log("====================================");
-  // console.log("controller");
-  // console.table({ websiteName, initialPrompt, isVerified, userId });
-  // console.log("====================================");
+
+
+
+
   if (!isVerified.verified) {
     return next(
       new ErrorHandler("Please verify your email to access this feature", 403),
@@ -115,12 +115,19 @@ export const deleteProject = asyncErrorHandler(async (req, res, next) => {
 
 export const editProject = asyncErrorHandler(async (req, res, next) => {
   const { projectId } = req.params;
-  const { websiteName, prompt } = req.body;
+  const { websiteName, prompt, code } = req.body;
+
+  if (code !== undefined && (typeof code !== "string" || !code.trim())) {
+    return next(new ErrorHandler("Code must be a non-empty string", 400));
+  }
+  if (code !== undefined && prompt) {
+    return next(new ErrorHandler("Save code or request an AI edit separately", 400));
+  }
 
   const project = await projectService.editProject(
     projectId,
     req.user._id,
-    { websiteName, prompt },
+    { websiteName, prompt, code },
     next,
   );
 

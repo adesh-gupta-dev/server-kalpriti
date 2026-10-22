@@ -1,127 +1,60 @@
-import { Transaction, User } from "../models/index.js";
+import { Transaction } from "../models/index.js";
 import { stripe } from "../config/stripe.js";
 import { createPaymentIntent } from "../utils/payment.js";
 import { PLANS } from "../constants/index.js";
-
+import { settlePayment } from "./paymentSettlement.js";
 export async function createPaymentTransaction(userId, { planId, totalPrice }) {
-  const plan = PLANS.find((p) => p.id === planId);
-  if (!plan) return { success: false, error: "Invalid Plan ID" };
-
-  const result = await createPaymentIntent(planId, totalPrice, userId);
-  if (!result.success) {
-    return { success: false, error: result.message };
-  }
-
+  const plan = PLANS.find((plan) => plan.id === planId);
+  if (!plan)
+    return { success: false, error: "Invalid Plan ID", statusCode: 400 };
+  if (Number(totalPrice) !== plan.price)
+    return {
+      success: false,
+      error: "Plan price does not match",
+      statusCode: 400,
+    };
+  const result = await createPaymentIntent(planId, plan.price, userId);
+  if (!result.success) return { success: false, error: result.message };
   return {
     success: true,
-    price: totalPrice,
+    price: plan.price,
     clientSecret: result.clientSecret,
   };
 }
-
-export async function getUserTransactions(userId) {
-  return Transaction.find({ userId }).sort({ createdAt: -1 });
-}
-
-export async function getAllTransactions() {
-  return Transaction.find().sort({ createdAt: -1 });
-}
-
-export async function getTransactionById(transactionId) {
-  return Transaction.findById(transactionId);
-}
-
-export async function updateTransactionStatus(transactionId, paymentStatus) {
-  const transaction = await Transaction.findById(transactionId);
-  if (!transaction) return null;
-
-  transaction.paymentStatus = paymentStatus;
-  if (paymentStatus === "Paid") {
-    transaction.isPaid = true;
-  }
-  await transaction.save();
-  return transaction;
-}
-
+export const getUserTransactions = (userId) => Transaction.findForUser(userId);
+export const getAllTransactions = () => Transaction.findAll();
+export const getTransactionById = (id) => Transaction.findById(id);
+export const updateTransactionStatus = (id, status) =>
+  Transaction.updateStatus(id, status);
 export async function confirmPaymentTransaction(userId, paymentIntentId) {
-  if (!paymentIntentId) {
+  if (!paymentIntentId)
     return {
       success: false,
       error: "Payment intent ID is required",
       statusCode: 400,
     };
-  }
-
-  if (!stripe) {
+  if (!stripe)
     return {
       success: false,
       error: "Payment service unavailable.",
       statusCode: 503,
     };
-  }
-
-  const transaction = await Transaction.findOne({ paymentIntentId, userId });
-  if (!transaction) {
-    return {
-      success: false,
-      error: "Transaction not found",
-      statusCode: 404,
-    };
-  }
-
+  if (!(await Transaction.findByIntent(paymentIntentId, userId)))
+    return { success: false, error: "Transaction not found", statusCode: 404 };
   try {
     const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-    if (!intent || intent.status !== "succeeded") {
+    if (!intent || intent.status !== "succeeded")
       return {
         success: false,
         error: `Payment is not completed yet (status: ${intent?.status || "unknown"})`,
         statusCode: 409,
       };
-    }
-
-    const creditsToAdd = Number(intent.metadata?.credits || transaction.credits || 0) || 0;
-    const amountPaid =
-      Number.isFinite(intent.amount_received) && intent.amount_received > 0
-        ? intent.amount_received / 100
-        : intent.amount / 100;
-
-    const paidTransaction = await Transaction.findOneAndUpdate(
-      { _id: transaction._id, isPaid: false },
-      {
-        paymentStatus: "Paid",
-        isPaid: true,
-        amount: amountPaid,
-        credits: creditsToAdd,
-      },
-      { new: true },
-    );
-
-    if (paidTransaction) {
-      await User.findByIdAndUpdate(userId, {
-        $inc: { credits: creditsToAdd },
-      });
-
-      return {
-        success: true,
-        transaction: paidTransaction,
-        creditsAdded: creditsToAdd,
-        alreadyProcessed: false,
-      };
-    }
-
-    const latestTransaction = await Transaction.findById(transaction._id);
-    return {
-      success: true,
-      transaction: latestTransaction,
-      creditsAdded: 0,
-      alreadyProcessed: true,
-    };
+    return { success: true, ...(await settlePayment(intent, userId)) };
   } catch (error) {
     return {
       success: false,
       error: error.message || "Unable to verify payment intent",
-      statusCode: 500,
+      statusCode: error.statusCode || 500,
     };
   }
 }

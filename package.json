@@ -6,23 +6,40 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon app.js",
-    "start": "node app.js"
+    "start": "node app.js",
+    "test": "node --experimental-test-module-mocks --test --test-concurrency=1 tests/*.test.js",
+    "db:migrate": "node db/migrate.js",
+    "db:verify": "node scripts/verify-database.js",
+    "rate:verify": "node scripts/verify-rate-limits.js",
+    "db:export-schema": "node scripts/export-schema.js",
+    "db:import:mongodb": "node scripts/import-mongodb.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/genai": "^1.38.0",
+    "@google/genai": "^1.52.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.3.1",
+    "dotenv": "^17.4.2",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.1.5",
-    "nodemailer": "^7.0.13",
-    "nodemon": "^3.1.11",
-    "ollama": "^0.6.3",
-    "stripe": "^20.3.0"
-  }
+    "nodemailer": "^10.1.7",
+    "ollama": "^0.6.4",
+    "pg": "^8.23.1",
+    "rate-limit-redis": "^6.0.1",
+    "redis": "^6.3.0",
+    "stripe": "^20.4.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "mongodb": "^7.7.0",
+    "nodemon": "^3.1.14"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@10.33.0"
 }

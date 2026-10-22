@@ -1,0 +1,45 @@
+name: API checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=3s --health-retries=10
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: kalpriti
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: kalpriti_test
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready -U kalpriti -d kalpriti_test" --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      NODE_ENV: test
+      JWT_SECRET_KEY: ci-only-secret-at-least-thirty-two-characters
+      DATABASE_URL: postgresql://kalpriti:ci-only-password@127.0.0.1:5432/kalpriti_test
+      CLIENT_URL: http://localhost:8081
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm audit --prod --audit-level=high
+      - run: pnpm run db:migrate
+      - run: pnpm run db:verify
+      - run: pnpm run rate:verify
+        env:
+          REDIS_URL: redis://127.0.0.1:6379
+      - run: docker build -t kalpriti-api:ci .

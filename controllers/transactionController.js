@@ -16,12 +16,7 @@ export const createTransaction = asyncErrorHandler(async (req, res, next) => {
   });
 
   if (!result.success) {
-    return next(
-      new ErrorHandler(
-        result.error,
-        result.error === "Invalid Plan ID" ? 400 : 500,
-      ),
-    );
+    return next(new ErrorHandler(result.error, result.statusCode || 500));
   }
 
   res.status(200).json({

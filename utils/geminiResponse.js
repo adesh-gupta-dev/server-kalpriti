@@ -1,18 +1,28 @@
 import { GoogleGenAI } from "@google/genai";
+import { config } from "../config/index.js";
+import ErrorHandler from "../middleware/errorMiddleware.js";
 
-/**
- * CONFIGURATION
- */
-const ai = new GoogleGenAI({
-  apiKey: process.env.GOOGLE_GEMINI_API_KEY,
-});
+let client;
+function getAi() {
+  if (!config.ai?.apiKey) return null;
+  try {
+    client ||= new GoogleGenAI({
+      apiKey: config.ai.apiKey,
+      httpOptions: { timeout: config.ai.timeout },
+    });
+    return client;
+  } catch {
+    return null;
+  }
+}
+const unavailable = () =>
+  new ErrorHandler(
+    "AI generation is temporarily unavailable. Please try again later.",
+    503,
+  );
 
-// ✅ Use stable model (IMPORTANT)
 const MODEL = process.env.GOOGLE_GEMINI_MODEL || "gemini-2.5-flash-lite";
 
-/**
- * SYSTEM PROMPTS
- */
 const ENHANCE_PROMPT_SYSTEM = `You are a prompt enhancement specialist. Take the user's website request and expand it into a detailed, comprehensive prompt that will help create the best possible website.
 
 Enhance this prompt by:
@@ -39,14 +49,14 @@ CRITICAL REQUIREMENTS:
 - Make it responsive using Tailwind responsive classes (sm:, md:, lg:, xl:)
 - Use Tailwind animations and transitions (animate-*, transition-*)
 - Include all necessary meta tags
-- Make sure to complete the html 
-- Add some functionality with JavaScript (e.g: darkmodetogle , interactive form validation, etc.) 
+- Make sure to complete the html
+- Add some functionality with JavaScript (e.g: darkmodetogle , interactive form validation, etc.)
 - If the prompt includes simple games (e.g: tic tac toe, snake, etc.) make sure to implement them fully with JavaScript and Tailwind styling
 - Use Google Fonts CDN if needed for custom fonts
 - Use placeholder images from https://placehold.co/600x400
 - Use Tailwind gradient classes for beautiful backgrounds
 - Make sure all buttons, cards, and components use Tailwind styling
--make sure not to repeat code 
+-make sure not to repeat code
 
 CRITICAL HARD RULES:
 1. You MUST output ONLY HTML.
@@ -54,10 +64,9 @@ CRITICAL HARD RULES:
 
 The HTML should be complete and ready to render as-is with Tailwind CSS.`;
 
-/**
- * CORE: Enhance Prompt
- */
 export async function geminiEnhanceResponse(prompt) {
+  const ai = getAi();
+  if (!ai) return Promise.reject(unavailable());
   try {
     const result = await ai.models.generateContent({
       model: MODEL,
@@ -86,10 +95,9 @@ export async function geminiEnhanceResponse(prompt) {
   }
 }
 
-/**
- * CORE: Build Website
- */
 export async function geminiBuildResponse(prompt) {
+  const ai = getAi();
+  if (!ai) return Promise.reject(unavailable());
   try {
     const result = await ai.models.generateContent({
       model: MODEL,
@@ -105,30 +113,26 @@ export async function geminiBuildResponse(prompt) {
       ],
     });
 
-    console.log("RAW GEMINI RESPONSE:", result);
+    console.log("RAW GEMINI RESPONSE:", result.promptTokensDetails);
 
     let code = result.text;
-
-    // console.log("Generated Code:", code);
 
     if (!code || code.trim() === "") {
       throw new Error("Gemini returned empty response");
     }
 
-    // Remove markdown if model misbehaves
     code = code.replace(/```html|```/g, "").trim();
 
     return code;
   } catch (error) {
     console.error("Build Error:", error.message);
-    throw error; // ❗ DO NOT return null
+    throw error;
   }
 }
 
-/**
- * CORE: Update Existing Website
- */
 export async function geminiUpdateResponse(prompt, currentCode) {
+  const ai = getAi();
+  if (!ai) return Promise.reject(unavailable());
   try {
     const result = await ai.models.generateContent({
       model: MODEL,

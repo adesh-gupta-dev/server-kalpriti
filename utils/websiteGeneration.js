@@ -19,7 +19,7 @@ export async function build(prompt, user, next) {
   const userId = user?._id ?? user;
   const userData = await User.findById(userId);
   if (!userData || userData.credits < CREDITS_BUILD) {
-    return next(new ErrorHandler("Insufficient credits", 402));
+    return Promise.reject(new ErrorHandler("Insufficient credits", 402));
   }
 
   let result;
@@ -31,16 +31,17 @@ export async function build(prompt, user, next) {
       ? await geminiBuildResponse(enhancedPrompt)
       : await ollamaResponse(enhancedPrompt);
   } catch (error) {
+    if (error.statusCode === 503) return Promise.reject(error);
     if (error.message?.includes("timed out")) {
-      return next(
+      return Promise.reject(
         new ErrorHandler("Ollama request timed out. Please try again.", 504),
       );
     }
-    return next(new ErrorHandler("Failed to build website code", 500));
+    return Promise.reject(
+      new ErrorHandler("Failed to build website code", 500),
+    );
   }
-  userData.credits -= CREDITS_BUILD;
-  userData.totalCreation += 1;
-  await userData.save();
+  // The project transaction applies credit usage together with persisted code.
 
   return result;
 }
@@ -53,10 +54,10 @@ export async function update(prompt, projectId, user, next) {
   ]);
 
   if (!projectData) {
-    return next(new ErrorHandler("Project not found", 404));
+    return Promise.reject(new ErrorHandler("Project not found", 404));
   }
   if (!userData || userData.credits < CREDITS_UPDATE) {
-    return next(new ErrorHandler("Insufficient credits", 402));
+    return Promise.reject(new ErrorHandler("Insufficient credits", 402));
   }
   let updatedCode;
   try {
@@ -66,16 +67,17 @@ export async function update(prompt, projectId, user, next) {
     updatedCode = isProduction
       ? await geminiUpdateResponse(enhancedPrompt, projectData.current_code)
       : await updateOllamaResponse(enhancedPrompt, projectData.current_code);
-    userData.credits -= CREDITS_UPDATE;
-    userData.totalCreation += 1;
-    await userData.save();
+    // Credit usage is applied atomically by the project service.
   } catch (error) {
-    if (error.message.includes("timed out")) {
-      return next(
+    if (error.statusCode === 503) return Promise.reject(error);
+    if (error.message?.includes("timed out")) {
+      return Promise.reject(
         new ErrorHandler("Ollama request timed out. Please try again.", 504),
       );
     }
-    return next(new ErrorHandler("Failed to update website code", 500));
+    return Promise.reject(
+      new ErrorHandler("Failed to update website code", 500),
+    );
   }
 
   return updatedCode;

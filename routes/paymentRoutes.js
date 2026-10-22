@@ -1,4 +1,5 @@
 import express from "express";
+import { validateBody } from "../middleware/validateBody.js";
 import {
   createTransaction,
   confirmTransaction,
@@ -14,8 +15,18 @@ import {
 
 const router = express.Router();
 
-router.post("/create", isAuthenticated, createTransaction);
-router.post("/confirm", isAuthenticated, confirmTransaction);
+router.post(
+  "/create",
+  isAuthenticated,
+  validateBody("payment"),
+  createTransaction,
+);
+router.post(
+  "/confirm",
+  isAuthenticated,
+  validateBody("confirmPayment"),
+  confirmTransaction,
+);
 router.get("/me", isAuthenticated, getUserTransactions);
 router.get(
   "/admin/transactions",
@@ -33,6 +44,7 @@ router.put(
   "/:id",
   isAuthenticated,
   authorizeRoles("ADMIN"),
+  validateBody("paymentStatus"),
   updateTransactionStatus,
 );
 

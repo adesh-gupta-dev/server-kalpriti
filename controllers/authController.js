@@ -3,6 +3,7 @@ import ErrorHandler from "../middleware/errorMiddleware.js";
 import { config } from "../config/index.js";
 import * as authService from "../services/authService.js";
 import { checkIsVerified } from "../utils/cheackIsVerified.js";
+import { csrfTokenFor } from "../utils/csrf.js";
 
 export const registerUser = asyncErrorHandler(async (req, res, next) => {
   const { name, email, password } = req.body;
@@ -35,10 +36,17 @@ export const loginUser = asyncErrorHandler(async (req, res, next) => {
     return next(new ErrorHandler(result.error, 401));
   }
 
-  authService.sendAuthToken(result.user, 200, "Login successful", res);
+  authService.sendAuthToken(
+    result.user,
+    200,
+    "Login successful",
+    res,
+    result.sessionVersion,
+  );
 });
 
 export const logoutUser = asyncErrorHandler(async (req, res) => {
+  await authService.revokeSessions(req.user._id);
   res.cookie("token", null, {
     expires: new Date(Date.now()),
     httpOnly: true,
@@ -57,7 +65,9 @@ export const getUserProfile = asyncErrorHandler(async (req, res, next) => {
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
   }
-  res.status(200).json({ success: true, user });
+  res
+    .status(200)
+    .json({ success: true, user, csrfToken: csrfTokenFor(req.authToken) });
 });
 
 export const updateProfile = asyncErrorHandler(async (req, res, next) => {
@@ -110,6 +120,7 @@ export const changePassword = asyncErrorHandler(async (req, res, next) => {
     200,
     "Password updated successfully",
     res,
+    result.sessionVersion,
   );
 });
 
@@ -120,12 +131,10 @@ export const forgotPassword = asyncErrorHandler(async (req, res, next) => {
     return next(new ErrorHandler("Please provide email", 400));
   }
 
-  const frontendBaseUrl =
-    req.get("origin") || config.clientUrl || `${req.protocol}://${req.get("host")}`;
-  const result = await authService.initiatePasswordReset(email, frontendBaseUrl);
+  const result = await authService.initiatePasswordReset(email);
 
   if (!result.success) {
-    return next(new ErrorHandler(result.error, 400));
+    return next(new ErrorHandler(result.error, result.statusCode || 400));
   }
 
   res.status(200).json({
@@ -158,7 +167,13 @@ export const resetPassword = asyncErrorHandler(async (req, res, next) => {
     return next(new ErrorHandler(result.error, 400));
   }
 
-  authService.sendAuthToken(result.user, 200, "Password reset successful", res);
+  authService.sendAuthToken(
+    result.user,
+    200,
+    "Password reset successful",
+    res,
+    result.sessionVersion,
+  );
 });
 
 export const sendVerificationEmail = asyncErrorHandler(

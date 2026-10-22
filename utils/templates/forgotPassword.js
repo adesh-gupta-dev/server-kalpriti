@@ -32,7 +32,7 @@ export function forgotPasswordEmailTemplate(resetLink) {
       <div style="text-align: center; margin: 30px 0;">
         <a href="${resetLink}" class="button" target="_blank">Reset Password</a>
       </div>
-      <p>This link will expire in <strong>1 hour</strong> for your security.</p>
+      <p>This link will expire in <strong>15 minutes</strong> for your security.</p>
       <p>If you didn't ask to reset your password, you can safely ignore this email. Your account remains secure.</p>
       <p>Best regards,<br>The AI Builder Team</p>
       <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;">

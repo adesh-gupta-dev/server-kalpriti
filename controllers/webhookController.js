@@ -11,7 +11,20 @@ export const handleStripeWebhook = asyncErrorHandler(async (req, res) => {
     );
     res.json({ received: true, eventType });
   } catch (err) {
-    console.error("Webhook error:", err.message);
-    res.status(400).send(`Webhook Error: ${err.message}`);
+    const invalid =
+      err.type === "StripeSignatureVerificationError" ||
+      err instanceof SyntaxError ||
+      (err.statusCode && err.statusCode < 500);
+    console.error("Webhook processing failed", {
+      type: err.type || err.code || "UNAVAILABLE",
+    });
+    res
+      .status(invalid ? 400 : 503)
+      .json({
+        received: false,
+        message: invalid
+          ? "Invalid webhook request"
+          : "Webhook processing is temporarily unavailable",
+      });
   }
 });

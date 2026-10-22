@@ -1,7 +1,4 @@
-/**
- * Utils barrel export
- * Use: import { sendEmail, generateOtp } from "../utils/index.js"
- */
+
 
 export {
   generateOtp,

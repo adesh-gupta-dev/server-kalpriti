@@ -7,10 +7,16 @@ import {
   deleteVersion,
 } from "../controllers/versionController.js";
 import { isAuthenticated } from "../middleware/authMiddleware.js";
+import { validateBody } from "../middleware/validateBody.js";
 
 const router = express.Router();
 
-router.post("/:projectId/", isAuthenticated, saveVersion);
+router.post(
+  "/:projectId/",
+  isAuthenticated,
+  validateBody("version"),
+  saveVersion,
+);
 router.get("/:projectId/all", isAuthenticated, getVersions);
 router.get("/:projectId/:versionId", isAuthenticated, getVersionById);
 router.put("/:projectId/:versionId/restore", isAuthenticated, restoreVersion);

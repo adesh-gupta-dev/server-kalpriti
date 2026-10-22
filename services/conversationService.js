@@ -1,35 +1,15 @@
 import { Conversation, WebsiteProject } from "../models/index.js";
-
-export async function getConversations(projectId, userId) {
-  const project = await WebsiteProject.findOne({
-    _id: projectId,
-    user_Id: userId,
-  });
-  if (!project) return null;
-
-  return Conversation.find({ projectId }).sort({ timestamp: 1 }).lean();
+import { withTransaction } from "../config/database.js";
+export async function getConversations(id, userId) {
+  if (!(await WebsiteProject.findOwned(id, userId))) return null;
+  return Conversation.findForProject(id);
 }
-
-export async function addMessage(
-  projectId,
-  userId,
-  { content, role = "user" },
-) {
-  const project = await WebsiteProject.findOne({
-    _id: projectId,
-    user_Id: userId,
+export async function addMessage(id, userId, { content, role = "user" }) {
+  return withTransaction(async (db) => {
+    if (!(await WebsiteProject.findOwned(id, userId, db, true))) return null;
+    return Conversation.create(
+      { role, content: content.trim(), projectId: id },
+      db,
+    );
   });
-  if (!project) return null;
-
-  const message = await Conversation.create({
-    role,
-    content: content.trim(),
-    projectId,
-  });
-
-  await WebsiteProject.findByIdAndUpdate(projectId, {
-    $push: { conversation: message._id },
-  });
-
-  return message;
 }
